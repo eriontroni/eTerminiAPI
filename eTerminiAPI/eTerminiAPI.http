@@ -1,0 +1,6 @@
+@eTerminiAPI_HostAddress = http://localhost:5094
+
+GET {{eTerminiAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
