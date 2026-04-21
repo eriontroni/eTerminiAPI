@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "eTerminiAPI.Application": {
+      "commandName": "Project"
+    }
+  }
+}
