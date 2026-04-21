@@ -29,4 +29,9 @@
     <Folder Include="Models\Domain\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\eTerminiApi.Application\eTerminiAPI.Application.csproj" />
+    <ProjectReference Include="..\eTerminiAPI.Infrastructure\eTerminiAPI.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

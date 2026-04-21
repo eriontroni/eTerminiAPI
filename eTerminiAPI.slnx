@@ -1,3 +1,6 @@
 <Solution>
-  <Project Path="eTerminiAPI/eTerminiAPI.csproj" />
+  <Project Path="eTerminiApi.Application/eTerminiAPI.Application.csproj" Id="a7fc342a-12f2-4ac9-8727-d0c3d21092d4" />
+  <Project Path="eTerminiAPI.Domain/eTerminiAPI.Domain.csproj" Id="c4786f19-d2d9-421c-a9f8-ca39096d2879" />
+  <Project Path="eTerminiAPI.Infrastructure/eTerminiAPI.Infrastructure.csproj" Id="c6430420-008a-48fd-bc49-8c72c0f55cb6" />
+  <Project Path="eTerminiAPI/eTerminiAPI.API.csproj" />
 </Solution>
