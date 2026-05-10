@@ -1,6 +1,8 @@
 using eTerminiAPI.Application.Interfaces.Repositories;
+using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Infrastructure.Persistence;
 using eTerminiAPI.Infrastructure.Repositories;
+using eTerminiAPI.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,7 @@ public static class DependencyInjection
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }
