@@ -40,7 +40,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CitizenOrAbove",    p => p.RequireRole("Citizen", "Staff", "InstitutionAdmin", "SuperAdmin"));
+    options.AddPolicy("StaffOrAbove",      p => p.RequireRole("Staff", "InstitutionAdmin", "SuperAdmin"));
+    options.AddPolicy("InstitutionAdmin",  p => p.RequireRole("InstitutionAdmin", "SuperAdmin"));
+    options.AddPolicy("SuperAdmin",        p => p.RequireRole("SuperAdmin"));
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -59,6 +65,6 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
+app.MapControllers().RequireAuthorization();
 
 app.Run();

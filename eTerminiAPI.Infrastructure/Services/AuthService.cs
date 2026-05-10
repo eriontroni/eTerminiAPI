@@ -7,6 +7,7 @@ using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Entities;
 using eTerminiAPI.Domain.Enums;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -16,11 +17,13 @@ public class AuthService : IAuthService
 {
     private readonly IUnitOfWork _uow;
     private readonly IConfiguration _config;
+    private readonly IPasswordHasher<User> _hasher;
 
-    public AuthService(IUnitOfWork uow, IConfiguration config)
+    public AuthService(IUnitOfWork uow, IConfiguration config, IPasswordHasher<User> hasher)
     {
         _uow = uow;
         _config = config;
+        _hasher = hasher;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -36,13 +39,13 @@ public class AuthService : IAuthService
             FirstName = dto.FirstName,
             LastName = dto.LastName,
             Email = dto.Email.ToLower().Trim(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             PhoneNumber = dto.PhoneNumber,
             Role = UserRole.Citizen,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
 
         await _uow.Users.AddAsync(user);
         await _uow.SaveChangesAsync();
@@ -59,7 +62,8 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Llogaria është çaktivizuar.");
 
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+        if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Email ose fjalëkalimi është i gabuar.");
 
         return await BuildAuthResponse(user);

@@ -1,4 +1,5 @@
 using eTerminiAPI.Application.Interfaces.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eTerminiAPI.API.Controllers;
@@ -15,6 +16,7 @@ public class TenantsController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
         var tenants = await _uow.Tenants.GetAllAsync();

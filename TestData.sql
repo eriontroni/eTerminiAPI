@@ -1,7 +1,7 @@
 -- ============================================================
 -- eTermini — Test Data Script
 -- Ekzekuto pas: Update-Database
--- PasswordHash = BCrypt i "Test123!" per te gjitha llogarite
+-- PasswordHash = ASP.NET IPasswordHasher i "Test123!" per te gjitha llogarite
 -- ============================================================
 
 USE eTerminiDB;
@@ -55,79 +55,79 @@ GO
 -- ============================================================
 -- 3. USERS
 -- Role: 0=Citizen, 1=Staff, 2=InstitutionAdmin, 3=SuperAdmin
--- PasswordHash = BCrypt("Test123!")
+-- PasswordHash = IPasswordHasher("Test123!")
 -- ============================================================
 INSERT INTO Users (Id, TenantId, FirstName, LastName, Email, PasswordHash, PhoneNumber, [Role], IsActive, CreatedAt, IsDeleted)
 VALUES
   -- SuperAdmin (Tenant=QKUK si placeholder)
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001',
    'Admin', 'Super', 'superadmin@etermini.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100000', 3, 1, GETUTCDATE(), 0),
 
   -- InstitutionAdmins
   ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001',
    'Besnik', 'Krasniqi', 'admin@qkuk.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100001', 2, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002',
    'Valdrin', 'Gashi', 'admin@policia.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100002', 2, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003',
    'Shpresa', 'Berisha', 'admin@komuna-prishte.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100003', 2, 1, GETUTCDATE(), 0),
 
   -- Staff - QKUK
   ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001',
    'Ardita', 'Hoxha', 'ardita.hoxha@qkuk.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100010', 1, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001',
    'Driton', 'Morina', 'driton.morina@qkuk.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100011', 1, 1, GETUTCDATE(), 0),
 
   -- Staff - Policia
   ('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000002',
    'Fjolla', 'Rama', 'fjolla.rama@policia.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100012', 1, 1, GETUTCDATE(), 0),
 
   -- Staff - Komuna
   ('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000003',
    'Kujtim', 'Aliu', 'kujtim.aliu@komuna-prishte.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344100013', 1, 1, GETUTCDATE(), 0),
 
   -- Citizens
   ('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001',
    'Arjeta', 'Syla', 'arjeta.syla@gmail.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344200001', 0, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001',
    'Liridon', 'Hoti', 'liridon.hoti@gmail.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344200002', 0, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001',
    'Mimoza', 'Zhitia', 'mimoza.zhitia@gmail.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344200003', 0, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000002',
    'Bujar', 'Sadiku', 'bujar.sadiku@gmail.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344200004', 0, 1, GETUTCDATE(), 0),
 
   ('20000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000003',
    'Teuta', 'Kastrati', 'teuta.kastrati@gmail.com',
-   '$2a$11$KwTFHBTlhWHCkeX6qMzgQeK8ZoztbRHqEBLsrLV7xIXxsXiQITDkC',
+   'AQAAAAIAAYagAAAAEMN8wAys5RkLiu+wu11/E0BoFqJWqD+zTQhBMb5KsP86MVeg1+SqnYs6lBWtzlM5/Q==',
    '+38344200005', 0, 1, GETUTCDATE(), 0);
 GO
 

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using eTerminiAPI.Application.DTOs.Auth;
 using eTerminiAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,21 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService)
     {
         _authService = authService;
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult Me()
+    {
+        var userId   = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User.FindFirstValue("sub");
+        var email    = User.FindFirstValue(ClaimTypes.Email)
+                    ?? User.FindFirstValue("email");
+        var role     = User.FindFirstValue(ClaimTypes.Role);
+        var fullName = User.FindFirstValue("fullName");
+        var tenantId = User.FindFirstValue("tenantId");
+
+        return Ok(new { userId, email, role, fullName, tenantId });
     }
 
     [HttpPost("register")]
@@ -47,6 +63,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto dto)
     {
         try
@@ -61,6 +78,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("revoke")]
+    [AllowAnonymous]
     public async Task<IActionResult> Revoke([FromBody] RefreshRequestDto dto)
     {
         await _authService.RevokeTokenAsync(dto.RefreshToken);
