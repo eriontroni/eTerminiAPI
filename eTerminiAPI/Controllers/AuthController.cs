@@ -25,7 +25,7 @@ public class AuthController : ControllerBase
                     ?? User.FindFirstValue("sub");
         var email    = User.FindFirstValue(ClaimTypes.Email)
                     ?? User.FindFirstValue("email");
-        var role     = User.FindFirstValue(ClaimTypes.Role);
+        var role     = User.FindFirstValue(ClaimTypes.Role);    
         var fullName = User.FindFirstValue("fullName");
         var tenantId = User.FindFirstValue("tenantId");
 

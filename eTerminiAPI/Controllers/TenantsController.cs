@@ -26,4 +26,13 @@ public class TenantsController : ControllerBase
             .OrderBy(t => t.Name);
         return Ok(result);
     }
+
+    [HttpGet("count")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCount()
+    {
+        var tenants = await _uow.Tenants.GetAllAsync();
+        var count = tenants.Count(t => t.IsActive && !t.IsDeleted);
+        return Ok(count);
+    }
 }

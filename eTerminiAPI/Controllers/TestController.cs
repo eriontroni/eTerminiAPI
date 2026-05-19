@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace eTerminiAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/[controller]")] // localhos/ip/api/test/ping    
 [AllowAnonymous]
 public class TestController : ControllerBase
 {
@@ -18,6 +18,8 @@ public class TestController : ControllerBase
             version = "1.0.0"
         });
     }
+
+
 
     [HttpGet("institutions")]
     public IActionResult GetInstitutions()
