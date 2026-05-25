@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAppointmentService, AppointmentService>();
 
         return services;
     }
