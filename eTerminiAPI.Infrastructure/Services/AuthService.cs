@@ -7,7 +7,6 @@ using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Entities;
 using eTerminiAPI.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,17 +16,29 @@ public class AuthService : IAuthService
 {
     private readonly IUnitOfWork _uow;
     private readonly IConfiguration _config;
-    private readonly IPasswordHasher<User> _hasher;
 
-    public AuthService(IUnitOfWork uow, IConfiguration config, IPasswordHasher<User> hasher)
+    public AuthService(IUnitOfWork uow, IConfiguration config)
     {
         _uow = uow;
         _config = config;
-        _hasher = hasher;
     }
+
+    private string HashPassword(string password)
+    {
+        var saltBytes = Encoding.UTF8.GetBytes(_config["Auth:PasswordSalt"]!);
+        using var hmac = new HMACSHA256(saltBytes);
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+        return Convert.ToBase64String(hash);
+    }
+
+    private bool VerifyPassword(string password, string storedHash)
+        => HashPassword(password) == storedHash;
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
     {
+        if (dto.TenantId is null)
+            throw new InvalidOperationException("Zgjidhni institucinin.");
+
         var existing = await _uow.Users.FindAsync(u => u.Email == dto.Email);
         if (existing.Any())
             throw new InvalidOperationException("Email është tashmë i regjistruar.");
@@ -35,17 +46,18 @@ public class AuthService : IAuthService
         var user = new User
         {
             Id = Guid.NewGuid(),
-            TenantId = dto.TenantId,
+            TenantId = dto.TenantId.Value,
             FirstName = dto.FirstName,
             LastName = dto.LastName,
             Email = dto.Email.ToLower().Trim(),
             PhoneNumber = dto.PhoneNumber,
             Role = UserRole.Citizen,
             IsActive = true,
+            IsDeleted = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        user.PasswordHash = _hasher.HashPassword(user, dto.Password);
+        user.PasswordHash = HashPassword(dto.Password);
 
         await _uow.Users.AddAsync(user);
         await _uow.SaveChangesAsync();
@@ -62,8 +74,7 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Llogaria është çaktivizuar.");
 
-        var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
-        if (result == PasswordVerificationResult.Failed)
+        if (!VerifyPassword(dto.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Email ose fjalëkalimi është i gabuar.");
 
         return await BuildAuthResponse(user);
