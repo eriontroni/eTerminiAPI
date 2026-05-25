@@ -13,7 +13,7 @@ public class User : TenantBaseEntity
     public UserRole Role { get; set; } = UserRole.Citizen;
     public bool IsActive { get; set; } = true;
 
-    public Tenant Tenant { get; set; } = null!;
+    public Tenant? Tenant { get; set; } = null!;
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();

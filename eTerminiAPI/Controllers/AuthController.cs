@@ -41,7 +41,7 @@ public class AuthController : ControllerBase
             var result = await _authService.RegisterAsync(dto);
             return Ok(result);
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException ex)    
         {
             return Conflict(new { message = ex.Message });
         }
