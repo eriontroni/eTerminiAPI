@@ -1,7 +1,10 @@
 using eTerminiAPI.Application.Interfaces.Caching;
+using eTerminiAPI.Application.Interfaces.Notifications;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
+using eTerminiAPI.Infrastructure.BackgroundServices;
 using eTerminiAPI.Infrastructure.Caching;
+using eTerminiAPI.Infrastructure.Notifications;
 using eTerminiAPI.Infrastructure.Persistence;
 using eTerminiAPI.Infrastructure.Repositories;
 using eTerminiAPI.Infrastructure.Services;
@@ -38,6 +41,10 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
+
+        services.Configure<ReminderOptions>(configuration.GetSection(ReminderOptions.SectionName));
+        services.AddScoped<IAppointmentNotifier, LogAppointmentNotifier>();
+        services.AddHostedService<AppointmentReminderService>();
 
         return services;
     }
