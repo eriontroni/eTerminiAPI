@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<ITimeSlotService, TimeSlotService>();
 
         return services;
     }

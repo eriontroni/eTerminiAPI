@@ -8,6 +8,8 @@ namespace eTerminiAPI.Infrastructure.Services;
 
 public class AppointmentService : IAppointmentService
 {
+    private const int DefaultSlotDurationMinutes = 30;
+
     private readonly IUnitOfWork _uow;
 
     public AppointmentService(IUnitOfWork uow)
@@ -23,6 +25,20 @@ public class AppointmentService : IAppointmentService
 
         if (dto.AppointmentDate <= DateTime.UtcNow)
             throw new ArgumentException("Data e terminit duhet të jetë në të ardhmen.");
+
+        var slotStart = dto.AppointmentDate;
+        var slotEnd = slotStart.AddMinutes(DefaultSlotDurationMinutes);
+        var windowStart = slotStart.AddMinutes(-DefaultSlotDurationMinutes);
+
+        var conflicts = await _uow.Appointments.FindAsync(a =>
+            a.DoctorId == dto.DoctorId &&
+            a.AppointmentDate.HasValue &&
+            a.AppointmentDate > windowStart &&
+            a.AppointmentDate < slotEnd &&
+            a.Status != AppointmentStatus.Cancelled);
+
+        if (conflicts.Any())
+            throw new InvalidOperationException("Ky termin është tashmë i rezervuar për këtë mjek.");
 
         var appointment = new Appointment
         {

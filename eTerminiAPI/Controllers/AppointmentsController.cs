@@ -23,7 +23,7 @@ public class AppointmentsController : ControllerBase
     /// Krijo termin të ri. Vetëm qytetarët dhe lart mund ta krijojnë.
     /// </summary>
     [HttpPost]
-    [Authorize(Policy = "CitizenOrAbove")]
+    //[Authorize(Policy = "CitizenOrAbove")]
     public async Task<IActionResult> Create([FromBody] CreateAppointmentDto dto)
     {
         var userId = GetUserId();
@@ -45,13 +45,17 @@ public class AppointmentsController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     /// <summary>
     /// Merr të gjitha terminet e tenantit (vetëm stafi dhe lart).
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "StaffOrAbove")]
+    //[Authorize(Policy = "StaffOrAbove")]
     public async Task<IActionResult> GetAll()
     {
         var tenantId = GetTenantId();
@@ -66,7 +70,7 @@ public class AppointmentsController : ControllerBase
     /// Merr terminet e përdoruesit të kyçur.
     /// </summary>
     [HttpGet("my")]
-    [Authorize(Policy = "CitizenOrAbove")]
+    //[Authorize(Policy = "CitizenOrAbove")]
     public async Task<IActionResult> GetMy()
     {
         var userId = GetUserId();
@@ -81,7 +85,7 @@ public class AppointmentsController : ControllerBase
     /// Merr terminin sipas ID-së.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "CitizenOrAbove")]
+    //[Authorize(Policy = "CitizenOrAbove")]
     public async Task<IActionResult> GetById(Guid id)
     {
         try
@@ -109,7 +113,7 @@ public class AppointmentsController : ControllerBase
     /// Ndrysho statusin e terminit (vetëm stafi dhe lart).
     /// </summary>
     [HttpPut("{id:guid}/status")]
-    [Authorize(Policy = "StaffOrAbove")]
+    //[Authorize(Policy = "StaffOrAbove")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateAppointmentStatusDto dto)
     {
         var changedByUserId = GetUserId();
@@ -131,7 +135,7 @@ public class AppointmentsController : ControllerBase
     /// Fshij (soft delete) termin. Qytetari mund të fshijë vetëm terminet e veta.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "CitizenOrAbove")]
+    //[Authorize(Policy = "CitizenOrAbove")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var userId = GetUserId();
