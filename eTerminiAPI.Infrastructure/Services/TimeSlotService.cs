@@ -1,23 +1,38 @@
 using eTerminiAPI.Application.DTOs.TimeSlots;
+using eTerminiAPI.Application.Interfaces.Caching;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Enums;
+using eTerminiAPI.Infrastructure.Caching;
+using Microsoft.Extensions.Configuration;
 
 namespace eTerminiAPI.Infrastructure.Services;
 
 public class TimeSlotService : ITimeSlotService
 {
     private readonly IUnitOfWork _uow;
+    private readonly ICacheService _cache;
+    private readonly TimeSpan _slotsTtl;
 
-    public TimeSlotService(IUnitOfWork uow)
+    public TimeSlotService(IUnitOfWork uow, ICacheService cache, IConfiguration configuration)
     {
         _uow = uow;
+        _cache = cache;
+
+        var minutes = configuration.GetValue<int?>("Cache:AvailableSlotsTtlMinutes") ?? 5;
+        _slotsTtl = TimeSpan.FromMinutes(minutes);
     }
 
     public async Task<IEnumerable<AvailableSlotDto>> GetAvailableSlotsAsync(Guid doctorId, DateTime date, int durationMinutes = 30)
     {
         if (durationMinutes <= 0)
             throw new ArgumentException("Kohëzgjatja e terminit duhet të jetë pozitive.");
+
+        var cacheKey = CacheKeys.AvailableSlots(doctorId, date.Date, durationMinutes);
+
+        var cached = await _cache.GetAsync<List<AvailableSlotDto>>(cacheKey);
+        if (cached is not null)
+            return cached;
 
         var doctors = await _uow.StaffMembers.FindAsync(s => s.Id == doctorId && s.IsActive);
         var doctor = doctors.FirstOrDefault()
@@ -33,7 +48,11 @@ public class TimeSlotService : ITimeSlotService
 
         var scheduleList = schedules.ToList();
         if (scheduleList.Count == 0)
-            return Enumerable.Empty<AvailableSlotDto>();
+        {
+            var empty = new List<AvailableSlotDto>();
+            await _cache.SetAsync(cacheKey, empty, _slotsTtl);
+            return empty;
+        }
 
         var dayStart = day;
         var dayEnd = day.AddDays(1);
@@ -75,7 +94,10 @@ public class TimeSlotService : ITimeSlotService
             }
         }
 
-        return slots.OrderBy(s => s.StartTime);
+        var ordered = slots.OrderBy(s => s.StartTime).ToList();
+        await _cache.SetAsync(cacheKey, ordered, _slotsTtl);
+
+        return ordered;
     }
 
     public async Task<bool> IsSlotFreeAsync(Guid doctorId, DateTime slotStart, int durationMinutes = 30)

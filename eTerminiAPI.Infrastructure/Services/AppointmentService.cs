@@ -1,20 +1,25 @@
 using eTerminiAPI.Application.DTOs.Appointments;
+using eTerminiAPI.Application.Interfaces.Caching;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Entities;
 using eTerminiAPI.Domain.Enums;
+using eTerminiAPI.Infrastructure.Caching;
 
 namespace eTerminiAPI.Infrastructure.Services;
 
 public class AppointmentService : IAppointmentService
 {
     private const int DefaultSlotDurationMinutes = 30;
+    private static readonly int[] CachedSlotDurations = { 15, 30, 45, 60 };
 
     private readonly IUnitOfWork _uow;
+    private readonly ICacheService _cache;
 
-    public AppointmentService(IUnitOfWork uow)
+    public AppointmentService(IUnitOfWork uow, ICacheService cache)
     {
         _uow = uow;
+        _cache = cache;
     }
 
     public async Task<AppointmentResponseDto> CreateAsync(CreateAppointmentDto dto, Guid userId, Guid tenantId)
@@ -55,6 +60,8 @@ public class AppointmentService : IAppointmentService
 
         await _uow.Appointments.AddAsync(appointment);
         await _uow.SaveChangesAsync();
+
+        await InvalidateAvailableSlotsCache(dto.DoctorId, dto.AppointmentDate);
 
         var users = await _uow.Users.FindAsync(u => u.Id == userId);
         var user = users.FirstOrDefault();
@@ -116,6 +123,9 @@ public class AppointmentService : IAppointmentService
 
         await _uow.SaveChangesAsync();
 
+        if (appointment.DoctorId.HasValue && appointment.AppointmentDate.HasValue)
+            await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, appointment.AppointmentDate.Value);
+
         var results = await EnrichAndMap(new List<Appointment> { appointment });
         return results.First();
     }
@@ -136,6 +146,18 @@ public class AppointmentService : IAppointmentService
         _uow.Appointments.Update(appointment);
 
         await _uow.SaveChangesAsync();
+
+        if (appointment.DoctorId.HasValue && appointment.AppointmentDate.HasValue)
+            await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, appointment.AppointmentDate.Value);
+    }
+
+    private async Task InvalidateAvailableSlotsCache(Guid doctorId, DateTime date)
+    {
+        foreach (var duration in CachedSlotDurations)
+        {
+            var key = CacheKeys.AvailableSlots(doctorId, date.Date, duration);
+            await _cache.RemoveAsync(key);
+        }
     }
 
     private async Task<IEnumerable<AppointmentResponseDto>> EnrichAndMap(List<Appointment> appointments)

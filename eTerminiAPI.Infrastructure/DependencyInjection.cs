@@ -1,5 +1,7 @@
+using eTerminiAPI.Application.Interfaces.Caching;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
+using eTerminiAPI.Infrastructure.Caching;
 using eTerminiAPI.Infrastructure.Persistence;
 using eTerminiAPI.Infrastructure.Repositories;
 using eTerminiAPI.Infrastructure.Services;
@@ -15,6 +17,22 @@ public static class DependencyInjection
     {
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+        var redisConnection = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConnection))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = configuration["Cache:InstanceName"] ?? "eTermini:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+
+        services.AddScoped<ICacheService, RedisCacheService>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
