@@ -7,3 +7,4 @@ public enum UserRole
     InstitutionAdmin = 2,
     SuperAdmin = 3
 }
+    
