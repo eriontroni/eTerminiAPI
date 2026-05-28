@@ -7,6 +7,8 @@ public class CreateAppointmentDto
     [Required]
     public Guid DoctorId { get; set; }
 
+    public Guid? ServiceId { get; set; }
+
     [Required]
     public DateTime AppointmentDate { get; set; }
 

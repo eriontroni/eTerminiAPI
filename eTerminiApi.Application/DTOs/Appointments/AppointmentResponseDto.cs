@@ -12,6 +12,13 @@ public class AppointmentResponseDto
     public string Status { get; set; } = string.Empty;
     public int StatusCode { get; set; }
     public string? Notes { get; set; }
+
+    public Guid? ServiceId { get; set; }
+    public string? ServiceName { get; set; }
+    public Guid? CategoryId { get; set; }
+    public string? CategoryName { get; set; }
+    public string? InstitutionName { get; set; }
+
     public Guid TenantId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

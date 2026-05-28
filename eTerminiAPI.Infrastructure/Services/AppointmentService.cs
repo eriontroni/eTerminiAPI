@@ -1,5 +1,6 @@
 using eTerminiAPI.Application.DTOs.Appointments;
 using eTerminiAPI.Application.Interfaces.Caching;
+using eTerminiAPI.Application.Interfaces.Realtime;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Entities;
@@ -15,11 +16,16 @@ public class AppointmentService : IAppointmentService
 
     private readonly IUnitOfWork _uow;
     private readonly ICacheService _cache;
+    private readonly ISlotAvailabilityBroadcaster _broadcaster;
 
-    public AppointmentService(IUnitOfWork uow, ICacheService cache)
+    public AppointmentService(
+        IUnitOfWork uow,
+        ICacheService cache,
+        ISlotAvailabilityBroadcaster broadcaster)
     {
         _uow = uow;
         _cache = cache;
+        _broadcaster = broadcaster;
     }
 
     public async Task<AppointmentResponseDto> CreateAsync(CreateAppointmentDto dto, Guid userId, Guid tenantId)
@@ -52,7 +58,7 @@ public class AppointmentService : IAppointmentService
             DoctorId = dto.DoctorId,
             AppointmentDate = dto.AppointmentDate,
             Status = AppointmentStatus.Pending,
-            Notes = dto.Notes,
+            Notes = EncodeServiceTag(dto.ServiceId, dto.Notes),
             TenantId = tenantId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -63,13 +69,8 @@ public class AppointmentService : IAppointmentService
 
         await InvalidateAvailableSlotsCache(dto.DoctorId, dto.AppointmentDate);
 
-        var users = await _uow.Users.FindAsync(u => u.Id == userId);
-        var user = users.FirstOrDefault();
-
-        var doctorUsers = await _uow.Users.FindAsync(u => u.Id == doctor.UserId);
-        var doctorUser = doctorUsers.FirstOrDefault();
-
-        return MapToResponse(appointment, user, doctor, doctorUser);
+        var results = await EnrichAndMap(new List<Appointment> { appointment });
+        return results.First();
     }
 
     public async Task<IEnumerable<AppointmentResponseDto>> GetAllAsync(Guid tenantId)
@@ -130,6 +131,75 @@ public class AppointmentService : IAppointmentService
         return results.First();
     }
 
+    public async Task<AppointmentResponseDto> RescheduleAsync(
+        Guid id,
+        RescheduleAppointmentDto dto,
+        Guid requestingUserId,
+        bool isStaffOrAbove)
+    {
+        var appointment = await _uow.Appointments.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException("Termini nuk u gjet.");
+
+        if (!isStaffOrAbove && appointment.UserId != requestingUserId)
+            throw new UnauthorizedAccessException("Nuk keni leje të riprogramoni këtë termin.");
+
+        if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Completed)
+            throw new InvalidOperationException("Terminet e anuluara ose të kryera nuk mund të riprogramohen.");
+
+        if (!appointment.DoctorId.HasValue)
+            throw new InvalidOperationException("Termini nuk ka mjek të caktuar.");
+
+        if (dto.AppointmentDate <= DateTime.UtcNow)
+            throw new ArgumentException("Data e re duhet të jetë në të ardhmen.");
+
+        var oldDate = appointment.AppointmentDate;
+        if (oldDate == dto.AppointmentDate)
+            throw new ArgumentException("Data e re është e njëjtë me datën aktuale.");
+
+        var slotStart = dto.AppointmentDate;
+        var slotEnd = slotStart.AddMinutes(DefaultSlotDurationMinutes);
+        var windowStart = slotStart.AddMinutes(-DefaultSlotDurationMinutes);
+
+        var conflicts = await _uow.Appointments.FindAsync(a =>
+            a.Id != appointment.Id &&
+            a.DoctorId == appointment.DoctorId &&
+            a.AppointmentDate.HasValue &&
+            a.AppointmentDate > windowStart &&
+            a.AppointmentDate < slotEnd &&
+            a.Status != AppointmentStatus.Cancelled);
+
+        if (conflicts.Any())
+            throw new InvalidOperationException("Ky termin është tashmë i rezervuar për këtë mjek.");
+
+        var history = new AppointmentStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            AppointmentId = appointment.Id,
+            OldStatus = appointment.Status,
+            NewStatus = appointment.Status,
+            Reason = string.IsNullOrWhiteSpace(dto.Reason)
+                ? $"Riprogramuar nga {oldDate:yyyy-MM-dd HH:mm} në {dto.AppointmentDate:yyyy-MM-dd HH:mm}."
+                : $"{dto.Reason} (Riprogramuar nga {oldDate:yyyy-MM-dd HH:mm} në {dto.AppointmentDate:yyyy-MM-dd HH:mm}.)",
+            ChangedByUserId = requestingUserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        await _uow.AppointmentStatusHistories.AddAsync(history);
+
+        appointment.AppointmentDate = dto.AppointmentDate;
+        appointment.UpdatedAt = DateTime.UtcNow;
+        _uow.Appointments.Update(appointment);
+
+        await _uow.SaveChangesAsync();
+
+        if (oldDate.HasValue)
+            await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, oldDate.Value);
+        await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, dto.AppointmentDate);
+
+        var results = await EnrichAndMap(new List<Appointment> { appointment });
+        return results.First();
+    }
+
     public async Task DeleteAsync(Guid id, Guid requestingUserId, bool isStaffOrAbove)
     {
         var appointment = await _uow.Appointments.GetByIdAsync(id)
@@ -158,6 +228,8 @@ public class AppointmentService : IAppointmentService
             var key = CacheKeys.AvailableSlots(doctorId, date.Date, duration);
             await _cache.RemoveAsync(key);
         }
+
+        await _broadcaster.SlotsChangedAsync(doctorId, date.Date);
     }
 
     private async Task<IEnumerable<AppointmentResponseDto>> EnrichAndMap(List<Appointment> appointments)
@@ -185,20 +257,93 @@ public class AppointmentService : IAppointmentService
                 .ToDictionary(u => u.Id)
             : new Dictionary<Guid, User>();
 
+        var serviceIds = appointments
+            .Select(a => ExtractServiceId(a.Notes))
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToHashSet();
+
+        var services = serviceIds.Any()
+            ? (await _uow.PublicServices.FindAsync(s => serviceIds.Contains(s.Id)))
+                .ToDictionary(s => s.Id)
+            : new Dictionary<Guid, PublicService>();
+
+        var categoryIds = services.Values.Select(s => s.CategoryId).ToHashSet();
+        var categories = categoryIds.Any()
+            ? (await _uow.ServiceCategories.FindAsync(c => categoryIds.Contains(c.Id)))
+                .ToDictionary(c => c.Id)
+            : new Dictionary<Guid, ServiceCategory>();
+
+        var deptIds = services.Values.Select(s => s.DepartmentId).ToHashSet();
+        var departments = deptIds.Any()
+            ? (await _uow.Departments.FindAsync(d => deptIds.Contains(d.Id)))
+                .ToDictionary(d => d.Id)
+            : new Dictionary<Guid, Department>();
+
+        var instIds = departments.Values.Select(d => d.InstitutionId).ToHashSet();
+        var institutions = instIds.Any()
+            ? (await _uow.Institutions.FindAsync(i => instIds.Contains(i.Id)))
+                .ToDictionary(i => i.Id)
+            : new Dictionary<Guid, Institution>();
+
         return appointments.Select(a =>
         {
             users.TryGetValue(a.UserId, out var user);
             StaffMember? doctor = a.DoctorId.HasValue && staffMembers.TryGetValue(a.DoctorId.Value, out var sm) ? sm : null;
             User? doctorUser = doctor != null && staffUsers.TryGetValue(doctor.UserId, out var du) ? du : null;
-            return MapToResponse(a, user, doctor, doctorUser);
+
+            PublicService? svc = null;
+            ServiceCategory? cat = null;
+            Institution? inst = null;
+            var svcId = ExtractServiceId(a.Notes);
+            if (svcId.HasValue && services.TryGetValue(svcId.Value, out var s))
+            {
+                svc = s;
+                categories.TryGetValue(s.CategoryId, out cat);
+                if (departments.TryGetValue(s.DepartmentId, out var d))
+                    institutions.TryGetValue(d.InstitutionId, out inst);
+            }
+
+            return MapToResponse(a, user, doctor, doctorUser, svc, cat, inst);
         });
+    }
+
+    private static string? EncodeServiceTag(Guid? serviceId, string? userNotes)
+    {
+        if (!serviceId.HasValue)
+            return userNotes;
+        var prefix = $"[svc:{serviceId.Value:N}]";
+        return string.IsNullOrWhiteSpace(userNotes) ? prefix : $"{prefix} {userNotes}";
+    }
+
+    private static Guid? ExtractServiceId(string? notes)
+    {
+        if (string.IsNullOrEmpty(notes) || !notes.StartsWith("[svc:"))
+            return null;
+        var end = notes.IndexOf(']');
+        if (end <= 5) return null;
+        var raw = notes.Substring(5, end - 5);
+        return Guid.TryParseExact(raw, "N", out var id) ? id : null;
+    }
+
+    private static string? StripServiceTag(string? notes)
+    {
+        if (string.IsNullOrEmpty(notes) || !notes.StartsWith("[svc:"))
+            return notes;
+        var end = notes.IndexOf(']');
+        if (end < 0) return notes;
+        var rest = notes.Substring(end + 1).TrimStart();
+        return string.IsNullOrEmpty(rest) ? null : rest;
     }
 
     private static AppointmentResponseDto MapToResponse(
         Appointment a,
         User? user,
         StaffMember? doctor,
-        User? doctorUser)
+        User? doctorUser,
+        PublicService? service = null,
+        ServiceCategory? category = null,
+        Institution? institution = null)
     {
         return new AppointmentResponseDto
         {
@@ -211,7 +356,12 @@ public class AppointmentService : IAppointmentService
             AppointmentDate = a.AppointmentDate,
             Status = a.Status.ToString(),
             StatusCode = (int)a.Status,
-            Notes = a.Notes,
+            Notes = StripServiceTag(a.Notes),
+            ServiceId = service?.Id,
+            ServiceName = service?.Name,
+            CategoryId = category?.Id,
+            CategoryName = category?.Name,
+            InstitutionName = institution?.Name,
             TenantId = a.TenantId,
             CreatedAt = a.CreatedAt,
             UpdatedAt = a.UpdatedAt
