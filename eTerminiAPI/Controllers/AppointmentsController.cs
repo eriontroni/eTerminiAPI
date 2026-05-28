@@ -132,6 +132,45 @@ public class AppointmentsController : ControllerBase
     }
 
     /// <summary>
+    /// Riprogramo termin (qytetarët për vete, stafi për cilindo).
+    /// </summary>
+    [HttpPut("{id:guid}/reschedule")]
+    //[Authorize(Policy = "CitizenOrAbove")]
+    public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleAppointmentDto dto)
+    {
+        var userId = GetUserId();
+        if (userId == Guid.Empty)
+            return Unauthorized(new { message = "Token i pavlefshëm." });
+
+        var role = GetRole();
+        var isStaff = role is nameof(UserRole.Staff)
+            or nameof(UserRole.InstitutionAdmin)
+            or nameof(UserRole.SuperAdmin);
+
+        try
+        {
+            var result = await _appointmentService.RescheduleAsync(id, dto, userId, isStaff);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Fshij (soft delete) termin. Qytetari mund të fshijë vetëm terminet e veta.
     /// </summary>
     [HttpDelete("{id:guid}")]

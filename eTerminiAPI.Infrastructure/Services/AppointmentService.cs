@@ -130,6 +130,75 @@ public class AppointmentService : IAppointmentService
         return results.First();
     }
 
+    public async Task<AppointmentResponseDto> RescheduleAsync(
+        Guid id,
+        RescheduleAppointmentDto dto,
+        Guid requestingUserId,
+        bool isStaffOrAbove)
+    {
+        var appointment = await _uow.Appointments.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException("Termini nuk u gjet.");
+
+        if (!isStaffOrAbove && appointment.UserId != requestingUserId)
+            throw new UnauthorizedAccessException("Nuk keni leje të riprogramoni këtë termin.");
+
+        if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.Completed)
+            throw new InvalidOperationException("Terminet e anuluara ose të kryera nuk mund të riprogramohen.");
+
+        if (!appointment.DoctorId.HasValue)
+            throw new InvalidOperationException("Termini nuk ka mjek të caktuar.");
+
+        if (dto.AppointmentDate <= DateTime.UtcNow)
+            throw new ArgumentException("Data e re duhet të jetë në të ardhmen.");
+
+        var oldDate = appointment.AppointmentDate;
+        if (oldDate == dto.AppointmentDate)
+            throw new ArgumentException("Data e re është e njëjtë me datën aktuale.");
+
+        var slotStart = dto.AppointmentDate;
+        var slotEnd = slotStart.AddMinutes(DefaultSlotDurationMinutes);
+        var windowStart = slotStart.AddMinutes(-DefaultSlotDurationMinutes);
+
+        var conflicts = await _uow.Appointments.FindAsync(a =>
+            a.Id != appointment.Id &&
+            a.DoctorId == appointment.DoctorId &&
+            a.AppointmentDate.HasValue &&
+            a.AppointmentDate > windowStart &&
+            a.AppointmentDate < slotEnd &&
+            a.Status != AppointmentStatus.Cancelled);
+
+        if (conflicts.Any())
+            throw new InvalidOperationException("Ky termin është tashmë i rezervuar për këtë mjek.");
+
+        var history = new AppointmentStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            AppointmentId = appointment.Id,
+            OldStatus = appointment.Status,
+            NewStatus = appointment.Status,
+            Reason = string.IsNullOrWhiteSpace(dto.Reason)
+                ? $"Riprogramuar nga {oldDate:yyyy-MM-dd HH:mm} në {dto.AppointmentDate:yyyy-MM-dd HH:mm}."
+                : $"{dto.Reason} (Riprogramuar nga {oldDate:yyyy-MM-dd HH:mm} në {dto.AppointmentDate:yyyy-MM-dd HH:mm}.)",
+            ChangedByUserId = requestingUserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        await _uow.AppointmentStatusHistories.AddAsync(history);
+
+        appointment.AppointmentDate = dto.AppointmentDate;
+        appointment.UpdatedAt = DateTime.UtcNow;
+        _uow.Appointments.Update(appointment);
+
+        await _uow.SaveChangesAsync();
+
+        if (oldDate.HasValue)
+            await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, oldDate.Value);
+        await InvalidateAvailableSlotsCache(appointment.DoctorId.Value, dto.AppointmentDate);
+
+        var results = await EnrichAndMap(new List<Appointment> { appointment });
+        return results.First();
+    }
+
     public async Task DeleteAsync(Guid id, Guid requestingUserId, bool isStaffOrAbove)
     {
         var appointment = await _uow.Appointments.GetByIdAsync(id)
