@@ -1,5 +1,6 @@
 using eTerminiAPI.Application.DTOs.Appointments;
 using eTerminiAPI.Application.Interfaces.Caching;
+using eTerminiAPI.Application.Interfaces.Realtime;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Entities;
@@ -15,11 +16,16 @@ public class AppointmentService : IAppointmentService
 
     private readonly IUnitOfWork _uow;
     private readonly ICacheService _cache;
+    private readonly ISlotAvailabilityBroadcaster _broadcaster;
 
-    public AppointmentService(IUnitOfWork uow, ICacheService cache)
+    public AppointmentService(
+        IUnitOfWork uow,
+        ICacheService cache,
+        ISlotAvailabilityBroadcaster broadcaster)
     {
         _uow = uow;
         _cache = cache;
+        _broadcaster = broadcaster;
     }
 
     public async Task<AppointmentResponseDto> CreateAsync(CreateAppointmentDto dto, Guid userId, Guid tenantId)
@@ -227,6 +233,8 @@ public class AppointmentService : IAppointmentService
             var key = CacheKeys.AvailableSlots(doctorId, date.Date, duration);
             await _cache.RemoveAsync(key);
         }
+
+        await _broadcaster.SlotsChangedAsync(doctorId, date.Date);
     }
 
     private async Task<IEnumerable<AppointmentResponseDto>> EnrichAndMap(List<Appointment> appointments)

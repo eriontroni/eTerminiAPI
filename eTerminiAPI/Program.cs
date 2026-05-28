@@ -1,4 +1,6 @@
 using System.Text;
+using eTerminiAPI.API.Hubs;
+using eTerminiAPI.Application.Interfaces.Realtime;
 using eTerminiAPI.Infrastructure;
 using eTerminiAPI.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -21,7 +23,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -50,6 +53,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("SuperAdmin",        p => p.RequireRole("SuperAdmin"));
 });
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ISlotAvailabilityBroadcaster, SignalRSlotBroadcaster>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -75,5 +80,6 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers().RequireAuthorization();
+app.MapHub<AppointmentsHub>("/hubs/appointments");
 
 app.Run();
