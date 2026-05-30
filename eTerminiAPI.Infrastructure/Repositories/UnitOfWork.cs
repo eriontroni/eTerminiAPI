@@ -10,6 +10,7 @@ public class UnitOfWork : IUnitOfWork
 
     public IGenericRepository<Tenant> Tenants { get; }
     public IGenericRepository<User> Users { get; }
+    public IGenericRepository<AdminRole> AdminRoles { get; }
     public IGenericRepository<Institution> Institutions { get; }
     public IGenericRepository<InstitutionBranch> InstitutionBranches { get; }
     public IGenericRepository<Department> Departments { get; }
@@ -31,6 +32,7 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
         Tenants = new GenericRepository<Tenant>(context);
         Users = new GenericRepository<User>(context);
+        AdminRoles = new GenericRepository<AdminRole>(context);
         Institutions = new GenericRepository<Institution>(context);
         InstitutionBranches = new GenericRepository<InstitutionBranch>(context);
         Departments = new GenericRepository<Department>(context);

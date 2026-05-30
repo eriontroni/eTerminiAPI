@@ -6,6 +6,7 @@ public interface IUnitOfWork : IDisposable
 {
     IGenericRepository<Tenant> Tenants { get; }
     IGenericRepository<User> Users { get; }
+    IGenericRepository<AdminRole> AdminRoles { get; }
     IGenericRepository<Institution> Institutions { get; }
     IGenericRepository<InstitutionBranch> InstitutionBranches { get; }
     IGenericRepository<Department> Departments { get; }
