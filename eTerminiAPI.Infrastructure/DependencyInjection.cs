@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
         services.AddScoped<ICatalogService, CatalogService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
 
         services.Configure<ReminderOptions>(configuration.GetSection(ReminderOptions.SectionName));
         services.AddScoped<IAppointmentNotifier, LogAppointmentNotifier>();
