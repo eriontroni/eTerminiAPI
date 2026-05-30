@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<IInstitutionService, InstitutionService>();
 
         services.Configure<ReminderOptions>(configuration.GetSection(ReminderOptions.SectionName));
         services.AddScoped<IAppointmentNotifier, LogAppointmentNotifier>();
