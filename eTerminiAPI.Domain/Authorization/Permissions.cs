@@ -37,6 +37,13 @@ public static class Permissions
         public const string View = "system.view";
     }
 
+    public static class Departments
+    {
+        public const string View         = "departments.view";
+        public const string CreateUpdate = "departments.create_update";
+        public const string Delete       = "departments.delete";
+    }
+
     public static class Administrators
     {
         public const string View         = "administrators.view";
@@ -78,6 +85,12 @@ public static class Permissions
         new("system", "Sistemi", new List<PermissionAction>
         {
             new(System.View, "Shiko"),
+        }),
+        new("departments", "Departamentet", new List<PermissionAction>
+        {
+            new(Departments.View,         "Shiko departamentet"),
+            new(Departments.CreateUpdate, "Krijo/Përditëso"),
+            new(Departments.Delete,       "Fshi"),
         }),
         new("administrators", "Shto Administrator", new List<PermissionAction>
         {
