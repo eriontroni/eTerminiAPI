@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<TenantSetting> TenantSettings => Set<TenantSetting>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<AdminRole> AdminRoles => Set<AdminRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Institution> Institutions => Set<Institution>();
     public DbSet<InstitutionBranch> InstitutionBranches => Set<InstitutionBranch>();
