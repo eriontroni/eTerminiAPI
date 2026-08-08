@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using eTerminiAPI.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,23 +22,23 @@ public class CatalogController : ControllerBase
     /// </summary>
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories()
-        => Ok(await _catalog.GetCategoriesAsync());
+        => Ok(await _catalog.GetCategoriesAsync(GetTenantId()));
 
     /// <summary>
-    /// Institucionet, opsionalisht të filtruara sipas kategorisë.
+    /// Institucionet, të filtruara sipas komunës (tenantit) të përdoruesit dhe opsionalisht kategorisë.
     /// </summary>
     [HttpGet("institutions")]
     public async Task<IActionResult> GetInstitutions([FromQuery] Guid? categoryId)
-        => Ok(await _catalog.GetInstitutionsAsync(categoryId));
+        => Ok(await _catalog.GetInstitutionsAsync(categoryId, GetTenantId()));
 
     /// <summary>
-    /// Shërbimet, opsionalisht filtruara sipas institucionit dhe/ose kategorisë.
+    /// Shërbimet, filtruara sipas komunës së përdoruesit dhe opsionalisht institucionit/kategorisë.
     /// </summary>
     [HttpGet("services")]
     public async Task<IActionResult> GetServices(
         [FromQuery] Guid? institutionId,
         [FromQuery] Guid? categoryId)
-        => Ok(await _catalog.GetServicesAsync(institutionId, categoryId));
+        => Ok(await _catalog.GetServicesAsync(institutionId, categoryId, GetTenantId()));
 
     /// <summary>
     /// Detajet e një shërbimi.
@@ -69,5 +70,14 @@ public class CatalogController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Tenanti (komuna) i përdoruesit të kyçur, ose null për vizitorë anonimë.
+    /// </summary>
+    private Guid? GetTenantId()
+    {
+        var raw = User.FindFirstValue("tenantId");
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 }

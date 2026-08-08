@@ -7,12 +7,6 @@ public class PublicServiceDto
     public string? Description { get; set; }
     public int DurationMinutes { get; set; }
 
-    public Guid CategoryId { get; set; }
-    public string CategoryName { get; set; } = string.Empty;
-
     public Guid InstitutionId { get; set; }
     public string InstitutionName { get; set; } = string.Empty;
-
-    public Guid DepartmentId { get; set; }
-    public string DepartmentName { get; set; } = string.Empty;
 }

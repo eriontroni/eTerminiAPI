@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eTerminiAPI.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using eTerminiAPI.Infrastructure.Persistence;
 namespace eTerminiAPI.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260530225504_AddCategoryIdToInstitution")]
+    partial class AddCategoryIdToInstitution
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -424,10 +427,13 @@ namespace eTerminiAPI.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("DepartmentId")
+                    b.Property<Guid>("DepartmentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
@@ -435,9 +441,6 @@ namespace eTerminiAPI.Infrastructure.Migrations
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
-
-                    b.Property<Guid>("InstitutionId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -449,9 +452,6 @@ namespace eTerminiAPI.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("ServiceCategoryId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -460,11 +460,9 @@ namespace eTerminiAPI.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CategoryId");
+
                     b.HasIndex("DepartmentId");
-
-                    b.HasIndex("InstitutionId");
-
-                    b.HasIndex("ServiceCategoryId");
 
                     b.ToTable("PublicServices");
                 });
@@ -894,21 +892,21 @@ namespace eTerminiAPI.Infrastructure.Migrations
 
             modelBuilder.Entity("eTerminiAPI.Domain.Entities.PublicService", b =>
                 {
-                    b.HasOne("eTerminiAPI.Domain.Entities.Department", null)
+                    b.HasOne("eTerminiAPI.Domain.Entities.ServiceCategory", "Category")
                         .WithMany("Services")
-                        .HasForeignKey("DepartmentId");
-
-                    b.HasOne("eTerminiAPI.Domain.Entities.Institution", "Institution")
-                        .WithMany()
-                        .HasForeignKey("InstitutionId")
+                        .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("eTerminiAPI.Domain.Entities.ServiceCategory", null)
+                    b.HasOne("eTerminiAPI.Domain.Entities.Department", "Department")
                         .WithMany("Services")
-                        .HasForeignKey("ServiceCategoryId");
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Navigation("Institution");
+                    b.Navigation("Category");
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("eTerminiAPI.Domain.Entities.RefreshToken", b =>

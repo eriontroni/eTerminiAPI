@@ -13,58 +13,41 @@ public class CatalogService : ICatalogService
         _uow = uow;
     }
 
-    public async Task<IEnumerable<ServiceCategoryDto>> GetCategoriesAsync()
+    public async Task<IEnumerable<ServiceCategoryDto>> GetCategoriesAsync(Guid? tenantId = null)
     {
         var categories = (await _uow.ServiceCategories.GetAllAsync()).ToList();
-        var services = (await _uow.PublicServices.FindAsync(s => s.IsActive)).ToList();
-        var departments = (await _uow.Departments.GetAllAsync()).ToList();
+        var institutions = (await _uow.Institutions.FindAsync(i =>
+            i.IsActive && (tenantId == null || i.TenantId == tenantId))).ToList();
 
-        var deptToInst = departments.ToDictionary(d => d.Id, d => d.InstitutionId);
-
-        return categories.Select(c =>
-        {
-            var serviceCount = services.Count(s => s.CategoryId == c.Id);
-            var institutionIds = services
-                .Where(s => s.CategoryId == c.Id)
-                .Select(s => deptToInst.TryGetValue(s.DepartmentId, out var iid) ? iid : Guid.Empty)
-                .Where(iid => iid != Guid.Empty)
-                .Distinct()
-                .Count();
-
-            return new ServiceCategoryDto
+        return categories
+            // When scoped to a tenant, only surface categories that actually have institutions there.
+            .Where(c => tenantId == null || institutions.Any(i => i.CategoryId == c.Id))
+            .Select(c =>
             {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description,
-                ServiceCount = serviceCount,
-                InstitutionCount = institutionIds,
-            };
-        }).OrderBy(c => c.Name);
+                var institutionCount = institutions.Count(i => i.CategoryId == c.Id);
+
+                return new ServiceCategoryDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Description = c.Description,
+                    ServiceCount = 0,
+                    InstitutionCount = institutionCount,
+                };
+            }).OrderBy(c => c.Name);
     }
 
-    public async Task<IEnumerable<InstitutionSummaryDto>> GetInstitutionsAsync(Guid? categoryId = null)
+    public async Task<IEnumerable<InstitutionSummaryDto>> GetInstitutionsAsync(Guid? categoryId = null, Guid? tenantId = null)
     {
-        var institutions = (await _uow.Institutions.FindAsync(i => i.IsActive)).ToList();
+        var institutions = (await _uow.Institutions.FindAsync(i =>
+            i.IsActive && (tenantId == null || i.TenantId == tenantId))).ToList();
         var services = (await _uow.PublicServices.FindAsync(s => s.IsActive)).ToList();
-        var departments = (await _uow.Departments.GetAllAsync()).ToList();
-
-        var deptToInst = departments.ToDictionary(d => d.Id, d => d.InstitutionId);
-
-        var filteredInstitutionIds = categoryId.HasValue
-            ? services
-                .Where(s => s.CategoryId == categoryId.Value)
-                .Select(s => deptToInst.TryGetValue(s.DepartmentId, out var iid) ? iid : Guid.Empty)
-                .Where(iid => iid != Guid.Empty)
-                .ToHashSet()
-            : null;
 
         return institutions
-            .Where(i => filteredInstitutionIds == null || filteredInstitutionIds.Contains(i.Id))
+            .Where(i => !categoryId.HasValue || i.CategoryId == categoryId.Value)
             .Select(i =>
             {
-                var serviceCount = services.Count(s =>
-                    (!categoryId.HasValue || s.CategoryId == categoryId.Value) &&
-                    deptToInst.TryGetValue(s.DepartmentId, out var iid) && iid == i.Id);
+                var serviceCount = services.Count(s => s.InstitutionId == i.Id);
 
                 return new InstitutionSummaryDto
                 {
@@ -80,25 +63,22 @@ public class CatalogService : ICatalogService
             .OrderBy(i => i.Name);
     }
 
-    public async Task<IEnumerable<PublicServiceDto>> GetServicesAsync(Guid? institutionId = null, Guid? categoryId = null)
+    public async Task<IEnumerable<PublicServiceDto>> GetServicesAsync(Guid? institutionId = null, Guid? categoryId = null, Guid? tenantId = null)
     {
         var services = (await _uow.PublicServices.FindAsync(s => s.IsActive)).ToList();
-        var departments = (await _uow.Departments.GetAllAsync()).ToList();
         var institutions = (await _uow.Institutions.GetAllAsync()).ToList();
-        var categories = (await _uow.ServiceCategories.GetAllAsync()).ToList();
 
-        var deptMap = departments.ToDictionary(d => d.Id);
         var instMap = institutions.ToDictionary(i => i.Id);
-        var catMap = categories.ToDictionary(c => c.Id);
+
+        // Restrict to services whose institution belongs to the user's tenant.
+        var tenantInstitutionIds = tenantId == null
+            ? null
+            : institutions.Where(i => i.TenantId == tenantId).Select(i => i.Id).ToHashSet();
 
         return services
-            .Where(s => !categoryId.HasValue || s.CategoryId == categoryId.Value)
-            .Where(s =>
-            {
-                if (!institutionId.HasValue) return true;
-                return deptMap.TryGetValue(s.DepartmentId, out var d) && d.InstitutionId == institutionId.Value;
-            })
-            .Select(s => MapService(s, deptMap, instMap, catMap))
+            .Where(s => !institutionId.HasValue || s.InstitutionId == institutionId.Value)
+            .Where(s => tenantInstitutionIds == null || tenantInstitutionIds.Contains(s.InstitutionId))
+            .Select(s => MapService(s, instMap))
             .OrderBy(s => s.Name);
     }
 
@@ -107,11 +87,9 @@ public class CatalogService : ICatalogService
         var service = await _uow.PublicServices.GetByIdAsync(serviceId)
             ?? throw new KeyNotFoundException("Shërbimi nuk u gjet.");
 
-        var departments = (await _uow.Departments.GetAllAsync()).ToDictionary(d => d.Id);
         var institutions = (await _uow.Institutions.GetAllAsync()).ToDictionary(i => i.Id);
-        var categories = (await _uow.ServiceCategories.GetAllAsync()).ToDictionary(c => c.Id);
 
-        return MapService(service, departments, institutions, categories);
+        return MapService(service, institutions);
     }
 
     public async Task<IEnumerable<ProviderDto>> GetProvidersForServiceAsync(Guid serviceId)
@@ -119,8 +97,11 @@ public class CatalogService : ICatalogService
         var service = await _uow.PublicServices.GetByIdAsync(serviceId)
             ?? throw new KeyNotFoundException("Shërbimi nuk u gjet.");
 
+        var depts = (await _uow.Departments.FindAsync(d => d.InstitutionId == service.InstitutionId)).ToList();
+        var deptIds = depts.Select(d => d.Id).ToHashSet();
+
         var staffMembers = (await _uow.StaffMembers.FindAsync(s =>
-            s.DepartmentId == service.DepartmentId && s.IsActive)).ToList();
+            deptIds.Contains(s.DepartmentId) && s.IsActive)).ToList();
 
         if (staffMembers.Count == 0)
             return Enumerable.Empty<ProviderDto>();
@@ -128,7 +109,7 @@ public class CatalogService : ICatalogService
         var userIds = staffMembers.Select(s => s.UserId).ToHashSet();
         var users = (await _uow.Users.FindAsync(u => userIds.Contains(u.Id))).ToDictionary(u => u.Id);
 
-        var departments = (await _uow.Departments.GetAllAsync()).ToDictionary(d => d.Id);
+        var departments = depts.ToDictionary(d => d.Id);
 
         return staffMembers.Select(s =>
         {
@@ -147,14 +128,9 @@ public class CatalogService : ICatalogService
 
     private static PublicServiceDto MapService(
         Domain.Entities.PublicService s,
-        IReadOnlyDictionary<Guid, Domain.Entities.Department> deptMap,
-        IReadOnlyDictionary<Guid, Domain.Entities.Institution> instMap,
-        IReadOnlyDictionary<Guid, Domain.Entities.ServiceCategory> catMap)
+        IReadOnlyDictionary<Guid, Domain.Entities.Institution> instMap)
     {
-        deptMap.TryGetValue(s.DepartmentId, out var dept);
-        Domain.Entities.Institution? inst = null;
-        if (dept != null) instMap.TryGetValue(dept.InstitutionId, out inst);
-        catMap.TryGetValue(s.CategoryId, out var cat);
+        instMap.TryGetValue(s.InstitutionId, out var inst);
 
         return new PublicServiceDto
         {
@@ -162,12 +138,8 @@ public class CatalogService : ICatalogService
             Name = s.Name,
             Description = s.Description,
             DurationMinutes = s.DurationMinutes,
-            CategoryId = s.CategoryId,
-            CategoryName = cat?.Name ?? string.Empty,
-            InstitutionId = inst?.Id ?? Guid.Empty,
+            InstitutionId = s.InstitutionId,
             InstitutionName = inst?.Name ?? string.Empty,
-            DepartmentId = s.DepartmentId,
-            DepartmentName = dept?.Name ?? string.Empty,
         };
     }
 }

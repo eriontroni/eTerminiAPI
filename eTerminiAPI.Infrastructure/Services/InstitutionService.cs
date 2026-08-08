@@ -43,28 +43,7 @@ public class InstitutionService : IInstitutionService
 
         var institutionIds = institutions.Select(i => i.Id).ToHashSet();
 
-        var departments = await _uow.Departments.FindAsync(d =>
-            d.TenantId == tenantId && institutionIds.Contains(d.InstitutionId));
-
-        var departmentIds = departments.Select(d => d.Id).ToHashSet();
-
-        var services = await _uow.PublicServices.FindAsync(s =>
-            s.TenantId == tenantId && s.IsActive && departmentIds.Contains(s.DepartmentId));
-
         var categories = (await _uow.ServiceCategories.GetAllAsync()).ToDictionary(c => c.Id);
-
-        var deptToInstitution = departments.ToDictionary(d => d.Id, d => d.InstitutionId);
-
-        // Map each institution to its most-used category
-        var institutionToCategory = services
-            .Where(s => deptToInstitution.ContainsKey(s.DepartmentId))
-            .GroupBy(s => deptToInstitution[s.DepartmentId])
-            .ToDictionary(
-                g => g.Key,
-                g => g.GroupBy(s => s.CategoryId)
-                       .OrderByDescending(cg => cg.Count())
-                       .Select(cg => cg.Key)
-                       .FirstOrDefault());
 
         return institutions
             .OrderBy(i => i.Name)
@@ -72,9 +51,8 @@ public class InstitutionService : IInstitutionService
             .Select(i =>
             {
                 string? categoryName = null;
-                if (institutionToCategory.TryGetValue(i.Id, out var catId) && catId != Guid.Empty)
-                    if (categories.TryGetValue(catId, out var cat))
-                        categoryName = cat.Name;
+                if (i.CategoryId.HasValue && categories.TryGetValue(i.CategoryId.Value, out var cat))
+                    categoryName = cat.Name;
 
                 return new InstitutionSearchResultDto
                 {

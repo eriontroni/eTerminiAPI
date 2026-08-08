@@ -63,6 +63,7 @@ public static class DbSeeder
             // 1) Shëndetësi
             new(
                 Id: Guid.Parse("bbbbbbbb-0001-0000-0000-000000000001"),
+                CategoryId: CatHealth,
                 Name: "QKMF Prishtinë",
                 Description: "Qendra Kryesore e Mjekësisë Familjare",
                 City: "Prishtinë",
@@ -72,14 +73,14 @@ public static class DbSeeder
                 {
                     new("cccccccc-0001-0001-0000-000000000001", "Mjekësi Familjare", new()
                     {
-                        new("dddddddd-0001-0001-0001-000000000001", CatHealth, "Konsultë e përgjithshme",    "Vizitë mjekësore standarde",      30),
-                        new("dddddddd-0001-0001-0002-000000000001", CatHealth, "Vizitë pediatrike",          "Kontroll për fëmijë deri 14 vjeç", 30),
+                        new("dddddddd-0001-0001-0001-000000000001", "Konsultë e përgjithshme",    "Vizitë mjekësore standarde",      30),
+                        new("dddddddd-0001-0001-0002-000000000001", "Vizitë pediatrike",          "Kontroll për fëmijë deri 14 vjeç", 30),
                     }),
                     new("cccccccc-0001-0002-0000-000000000001", "Specialistike", new()
                     {
-                        new("dddddddd-0001-0002-0001-000000000001", CatHealth, "Kardiologji",                "Kontrolli i zemrës dhe enëve të gjakut", 45),
-                        new("dddddddd-0001-0002-0002-000000000001", CatHealth, "Neurologji",                 "Diagnostikim i sistemit nervor",          45),
-                        new("dddddddd-0001-0002-0003-000000000001", CatHealth, "Oftalmologji",               "Kontroll i syrit",                        30),
+                        new("dddddddd-0001-0002-0001-000000000001", "Kardiologji",                "Kontrolli i zemrës dhe enëve të gjakut", 45),
+                        new("dddddddd-0001-0002-0002-000000000001", "Neurologji",                 "Diagnostikim i sistemit nervor",          45),
+                        new("dddddddd-0001-0002-0003-000000000001", "Oftalmologji",               "Kontroll i syrit",                        30),
                     }),
                 },
                 Staff: new()
@@ -95,6 +96,7 @@ public static class DbSeeder
             // 2) Dokumente Civile
             new(
                 Id: Guid.Parse("bbbbbbbb-0002-0000-0000-000000000001"),
+                CategoryId: CatCivilDocs,
                 Name: "Drejtoria e Regjistrit Civil – Prishtinë",
                 Description: "Lëshim dokumentesh personale dhe certifikata",
                 City: "Prishtinë",
@@ -104,11 +106,11 @@ public static class DbSeeder
                 {
                     new("cccccccc-0002-0001-0000-000000000001", "Dokumente Personale", new()
                     {
-                        new("dddddddd-0002-0001-0001-000000000001", CatCivilDocs, "Aplikim për pasaportë",       "Lëshim i pasaportës biometrike",        30),
-                        new("dddddddd-0002-0001-0002-000000000001", CatCivilDocs, "Letërnjoftim (ID)",            "Lëshim ose ripërtëritje e ID-së",       30),
-                        new("dddddddd-0002-0001-0003-000000000001", CatCivilDocs, "Certifikatë lindjeje",         "Lëshim i certifikatës së lindjes",      15),
-                        new("dddddddd-0002-0001-0004-000000000001", CatCivilDocs, "Certifikatë martese",          "Lëshim i certifikatës së martesës",     15),
-                        new("dddddddd-0002-0001-0005-000000000001", CatCivilDocs, "Certifikatë vendbanimi",       "Vërtetim i vendbanimit",                15),
+                        new("dddddddd-0002-0001-0001-000000000001", "Aplikim për pasaportë",       "Lëshim i pasaportës biometrike",        30),
+                        new("dddddddd-0002-0001-0002-000000000001", "Letërnjoftim (ID)",            "Lëshim ose ripërtëritje e ID-së",       30),
+                        new("dddddddd-0002-0001-0003-000000000001", "Certifikatë lindjeje",         "Lëshim i certifikatës së lindjes",      15),
+                        new("dddddddd-0002-0001-0004-000000000001", "Certifikatë martese",          "Lëshim i certifikatës së martesës",     15),
+                        new("dddddddd-0002-0001-0005-000000000001", "Certifikatë vendbanimi",       "Vërtetim i vendbanimit",                15),
                     }),
                 },
                 Staff: new()
@@ -122,6 +124,7 @@ public static class DbSeeder
             // 3) Policia
             new(
                 Id: Guid.Parse("bbbbbbbb-0003-0000-0000-000000000001"),
+                CategoryId: CatPolice,
                 Name: "Stacioni Policor – Prishtinë",
                 Description: "Shërbime dhe raportime policore",
                 City: "Prishtinë",
@@ -131,9 +134,9 @@ public static class DbSeeder
                 {
                     new("cccccccc-0003-0001-0000-000000000001", "Shërbime Qytetare", new()
                     {
-                        new("dddddddd-0003-0001-0001-000000000001", CatPolice, "Raportim humbjeje dokumentesh", "Raportim i humbjes së dokumenteve personale", 20),
-                        new("dddddddd-0003-0001-0002-000000000001", CatPolice, "Vërtetim i dënueshmërisë",      "Vërtetim që personi nuk është nën hetim",     20),
-                        new("dddddddd-0003-0001-0003-000000000001", CatPolice, "Leje për tubim publik",         "Aplikim për leje tubimi",                     30),
+                        new("dddddddd-0003-0001-0001-000000000001", "Raportim humbjeje dokumentesh", "Raportim i humbjes së dokumenteve personale", 20),
+                        new("dddddddd-0003-0001-0002-000000000001", "Vërtetim i dënueshmërisë",      "Vërtetim që personi nuk është nën hetim",     20),
+                        new("dddddddd-0003-0001-0003-000000000001", "Leje për tubim publik",         "Aplikim për leje tubimi",                     30),
                     }),
                 },
                 Staff: new()
@@ -146,6 +149,7 @@ public static class DbSeeder
             // 4) Trafiku Rrugor
             new(
                 Id: Guid.Parse("bbbbbbbb-0004-0000-0000-000000000001"),
+                CategoryId: CatTraffic,
                 Name: "Drejtoria e Trafikut Rrugor – Prishtinë",
                 Description: "Patentë shoferi, regjistrim automjeti, pagimi i gjobave",
                 City: "Prishtinë",
@@ -155,14 +159,14 @@ public static class DbSeeder
                 {
                     new("cccccccc-0004-0001-0000-000000000001", "Patentë Shoferi", new()
                     {
-                        new("dddddddd-0004-0001-0001-000000000001", CatTraffic, "Aplikim për patentë shoferi",   "Lëshim i patentës së shoferit", 30),
-                        new("dddddddd-0004-0001-0002-000000000001", CatTraffic, "Ripërtëritje e patentës",       "Zëvendësim i patentës ekzistuese", 20),
-                        new("dddddddd-0004-0001-0003-000000000001", CatTraffic, "Teste teorike",                 "Caktim termini për provim teorik", 60),
+                        new("dddddddd-0004-0001-0001-000000000001", "Aplikim për patentë shoferi",   "Lëshim i patentës së shoferit", 30),
+                        new("dddddddd-0004-0001-0002-000000000001", "Ripërtëritje e patentës",       "Zëvendësim i patentës ekzistuese", 20),
+                        new("dddddddd-0004-0001-0003-000000000001", "Teste teorike",                 "Caktim termini për provim teorik", 60),
                     }),
                     new("cccccccc-0004-0002-0000-000000000001", "Automjete", new()
                     {
-                        new("dddddddd-0004-0002-0001-000000000001", CatTraffic, "Regjistrim automjeti",          "Regjistrim i parë i automjetit", 45),
-                        new("dddddddd-0004-0002-0002-000000000001", CatTraffic, "Pagimi i gjobave të trafikut",  "Pagesë e drejtpërdrejtë e gjobave", 15),
+                        new("dddddddd-0004-0002-0001-000000000001", "Regjistrim automjeti",          "Regjistrim i parë i automjetit", 45),
+                        new("dddddddd-0004-0002-0002-000000000001", "Pagimi i gjobave të trafikut",  "Pagesë e drejtpërdrejtë e gjobave", 15),
                     }),
                 },
                 Staff: new()
@@ -177,6 +181,7 @@ public static class DbSeeder
             // 5) Shërbime Komunale
             new(
                 Id: Guid.Parse("bbbbbbbb-0005-0000-0000-000000000001"),
+                CategoryId: CatMunicipal,
                 Name: "Komuna e Prishtinës",
                 Description: "Shërbime administrative dhe komunale",
                 City: "Prishtinë",
@@ -186,18 +191,18 @@ public static class DbSeeder
                 {
                     new("cccccccc-0005-0001-0000-000000000001", "Tatimi në Pronë", new()
                     {
-                        new("dddddddd-0005-0001-0001-000000000001", CatMunicipal, "Pagimi i tatimit në pronë",   "Pagesa e tatimit vjetor",         15),
-                        new("dddddddd-0005-0001-0002-000000000001", CatMunicipal, "Vërtetim tatimor",            "Lëshim i vërtetimit për tatime",  15),
+                        new("dddddddd-0005-0001-0001-000000000001", "Pagimi i tatimit në pronë",   "Pagesa e tatimit vjetor",         15),
+                        new("dddddddd-0005-0001-0002-000000000001", "Vërtetim tatimor",            "Lëshim i vërtetimit për tatime",  15),
                     }),
                     new("cccccccc-0005-0002-0000-000000000001", "Leje Ndërtimi", new()
                     {
-                        new("dddddddd-0005-0002-0001-000000000001", CatMunicipal, "Aplikim për leje ndërtimi",   "Aplikim i ri për leje ndërtimi",  60),
-                        new("dddddddd-0005-0002-0002-000000000001", CatMunicipal, "Konsultim urbanistik",        "Takim me planifikuesit urban",    45),
+                        new("dddddddd-0005-0002-0001-000000000001", "Aplikim për leje ndërtimi",   "Aplikim i ri për leje ndërtimi",  60),
+                        new("dddddddd-0005-0002-0002-000000000001", "Konsultim urbanistik",        "Takim me planifikuesit urban",    45),
                     }),
                     new("cccccccc-0005-0003-0000-000000000001", "Shërbime Administrative", new()
                     {
-                        new("dddddddd-0005-0003-0001-000000000001", CatMunicipal, "Vërtetim banimi",             "Vërtetim që banoni në komunë",    15),
-                        new("dddddddd-0005-0003-0002-000000000001", CatMunicipal, "Ankesë qytetare",             "Paraqitje e ankesës formale",     30),
+                        new("dddddddd-0005-0003-0001-000000000001", "Vërtetim banimi",             "Vërtetim që banoni në komunë",    15),
+                        new("dddddddd-0005-0003-0002-000000000001", "Ankesë qytetare",             "Paraqitje e ankesës formale",     30),
                     }),
                 },
                 Staff: new()
@@ -217,6 +222,7 @@ public static class DbSeeder
             {
                 Id = p.Id,
                 TenantId = TenantId,
+                CategoryId = p.CategoryId,
                 Name = p.Name,
                 Description = p.Description,
                 City = p.City,
@@ -244,8 +250,7 @@ public static class DbSeeder
                     {
                         Id = Guid.Parse(svc.Id),
                         TenantId = TenantId,
-                        DepartmentId = Guid.Parse(dept.Id),
-                        CategoryId = svc.CategoryId,
+                        InstitutionId = p.Id,
                         Name = svc.Name,
                         Description = svc.Description,
                         DurationMinutes = svc.DurationMinutes,
@@ -308,6 +313,7 @@ public static class DbSeeder
 
     private record InstitutionPack(
         Guid Id,
+        Guid CategoryId,
         string Name,
         string Description,
         string City,
@@ -317,6 +323,6 @@ public static class DbSeeder
         List<StaffPack> Staff);
 
     private record DeptPack(string Id, string Name, List<ServicePack> Services);
-    private record ServicePack(string Id, Guid CategoryId, string Name, string Description, int DurationMinutes);
+    private record ServicePack(string Id, string Name, string Description, int DurationMinutes);
     private record StaffPack(string StaffId, string FirstName, string LastName, string Title, string DepartmentId);
 }

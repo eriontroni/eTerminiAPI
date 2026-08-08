@@ -4,6 +4,7 @@ using eTerminiAPI.Application.Interfaces.Realtime;
 using eTerminiAPI.Infrastructure;
 using eTerminiAPI.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -18,16 +19,38 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog();
 
+// Prapa Cloudflare Tunnel / reverse proxy: respekto X-Forwarded-Proto & X-Forwarded-For,
+// përndryshe ASP.NET Core i sheh kërkesat si http dhe gjeneron redirect/link të gabuar.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Proxy-t janë brenda rrjetit të Docker-it — nuk dihen paraprakisht IP-të.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Origjinat lejohen nga konfigurimi (Cors:AllowedOrigins), me fallback në portat lokale të Vite.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>();
+
+if (allowedOrigins is null || allowedOrigins.Length == 0)
+{
+    allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
+
+builder.Services.AddHealthChecks();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -84,24 +107,37 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-    await DbSeeder.SeedAsync(db);
+
+    if (app.Configuration.GetValue("Database:SeedDemoData", true))
+    {
+        await DbSeeder.SeedAsync(db);
+    }
 }
 
-if (app.Environment.IsDevelopment())
+app.UseForwardedHeaders();
+
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", false))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Prapa tunelit TLS-i mbyllet te Cloudflare — redirect-i brenda kontejnerit do të krijonte lak.
+if (app.Configuration.GetValue("Hosting:UseHttpsRedirection", true))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers().RequireAuthorization();
 app.MapHub<AppointmentsHub>("/hubs/appointments");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();

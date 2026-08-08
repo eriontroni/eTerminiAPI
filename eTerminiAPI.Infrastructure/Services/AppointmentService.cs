@@ -58,7 +58,7 @@ public class AppointmentService : IAppointmentService
             DoctorId = dto.DoctorId,
             AppointmentDate = dto.AppointmentDate,
             Status = AppointmentStatus.Pending,
-            Notes = EncodeServiceTag(dto.ServiceId, dto.Notes),
+            Notes = dto.Notes,
             TenantId = tenantId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -268,19 +268,7 @@ public class AppointmentService : IAppointmentService
                 .ToDictionary(s => s.Id)
             : new Dictionary<Guid, PublicService>();
 
-        var categoryIds = services.Values.Select(s => s.CategoryId).ToHashSet();
-        var categories = categoryIds.Any()
-            ? (await _uow.ServiceCategories.FindAsync(c => categoryIds.Contains(c.Id)))
-                .ToDictionary(c => c.Id)
-            : new Dictionary<Guid, ServiceCategory>();
-
-        var deptIds = services.Values.Select(s => s.DepartmentId).ToHashSet();
-        var departments = deptIds.Any()
-            ? (await _uow.Departments.FindAsync(d => deptIds.Contains(d.Id)))
-                .ToDictionary(d => d.Id)
-            : new Dictionary<Guid, Department>();
-
-        var instIds = departments.Values.Select(d => d.InstitutionId).ToHashSet();
+        var instIds = services.Values.Select(s => s.InstitutionId).ToHashSet();
         var institutions = instIds.Any()
             ? (await _uow.Institutions.FindAsync(i => instIds.Contains(i.Id)))
                 .ToDictionary(i => i.Id)
@@ -293,18 +281,15 @@ public class AppointmentService : IAppointmentService
             User? doctorUser = doctor != null && staffUsers.TryGetValue(doctor.UserId, out var du) ? du : null;
 
             PublicService? svc = null;
-            ServiceCategory? cat = null;
             Institution? inst = null;
             var svcId = ExtractServiceId(a.Notes);
             if (svcId.HasValue && services.TryGetValue(svcId.Value, out var s))
             {
                 svc = s;
-                categories.TryGetValue(s.CategoryId, out cat);
-                if (departments.TryGetValue(s.DepartmentId, out var d))
-                    institutions.TryGetValue(d.InstitutionId, out inst);
+                institutions.TryGetValue(s.InstitutionId, out inst);
             }
 
-            return MapToResponse(a, user, doctor, doctorUser, svc, cat, inst);
+            return MapToResponse(a, user, doctor, doctorUser, svc, null, inst);
         });
     }
 

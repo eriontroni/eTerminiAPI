@@ -44,6 +44,20 @@ public static class Permissions
         public const string Delete       = "departments.delete";
     }
 
+    public static class Categories
+    {
+        public const string View         = "categories.view";
+        public const string CreateUpdate = "categories.create_update";
+        public const string Delete       = "categories.delete";
+    }
+
+    public static class Services
+    {
+        public const string View         = "services.view";
+        public const string CreateUpdate = "services.create_update";
+        public const string Delete       = "services.delete";
+    }
+
     public static class Administrators
     {
         public const string View         = "administrators.view";
@@ -91,6 +105,18 @@ public static class Permissions
             new(Departments.View,         "Shiko departamentet"),
             new(Departments.CreateUpdate, "Krijo/Përditëso"),
             new(Departments.Delete,       "Fshi"),
+        }),
+        new("categories", "Kategoritë", new List<PermissionAction>
+        {
+            new(Categories.View,         "Shiko kategoritë"),
+            new(Categories.CreateUpdate, "Krijo/Përditëso"),
+            new(Categories.Delete,       "Fshi"),
+        }),
+        new("services", "Shërbimet", new List<PermissionAction>
+        {
+            new(Services.View,         "Shiko shërbimet"),
+            new(Services.CreateUpdate, "Krijo/Përditëso"),
+            new(Services.Delete,       "Fshi"),
         }),
         new("administrators", "Shto Administrator", new List<PermissionAction>
         {

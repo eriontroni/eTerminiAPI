@@ -13,6 +13,9 @@ public class Institution : TenantBaseEntity
     public string? LogoUrl { get; set; }
     public bool IsActive { get; set; } = true;
 
+    // Kategoria e shërbimeve së cilës i përket institucioni (opsionale në DB, e detyrueshme në UI).
+    public Guid? CategoryId { get; set; }
+
     public Tenant Tenant { get; set; } = null!;
     public ICollection<InstitutionBranch> Branches { get; set; } = new List<InstitutionBranch>();
     public ICollection<Department> Departments { get; set; } = new List<Department>();

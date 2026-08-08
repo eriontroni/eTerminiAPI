@@ -1,0 +1,15 @@
+.git
+.gitignore
+.github
+.claude
+.vs
+**/bin
+**/obj
+**/logs
+*.log
+*.user
+TestData.sql
+BcryptVerify
+Dockerfile
+.dockerignore
+README.md
