@@ -2,19 +2,23 @@ using eTerminiAPI.Application.DTOs.TimeSlots;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
 using eTerminiAPI.Domain.Enums;
+using eTerminiAPI.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace eTerminiAPI.Infrastructure.Services;
 
 public class TimeSlotService : ITimeSlotService
 {
     private readonly IUnitOfWork _uow;
+    private readonly AppDbContext _db;
 
     // Slot times are stored/compared as naive local (Kosovo) time.
     private static readonly TimeZoneInfo KosovoTz = ResolveKosovoTimeZone();
 
-    public TimeSlotService(IUnitOfWork uow)
+    public TimeSlotService(IUnitOfWork uow, AppDbContext db)
     {
         _uow = uow;
+        _db = db;
     }
 
     private static TimeZoneInfo ResolveKosovoTimeZone()
@@ -33,53 +37,63 @@ public class TimeSlotService : ITimeSlotService
         if (durationMinutes <= 0)
             throw new ArgumentException("Kohëzgjatja e terminit duhet të jetë pozitive.");
 
-        // Availability is read live from the database (no cache) so slots are always current.
-        var doctors = await _uow.StaffMembers.FindAsync(s => s.Id == doctorId && s.IsActive);
-        var doctor = doctors.FirstOrDefault()
-            ?? throw new KeyNotFoundException("Mjeku/stafi nuk u gjet ose nuk është aktiv.");
-
         var day = date.Date;
         var dayOfWeek = day.DayOfWeek;
+        var dayEnd = day.AddDays(1);
 
-        // Working window comes from the staff schedule when defined; otherwise a default
-        // 09:00–17:00 day is used so availability is driven by booked Appointments, not schedules.
-        var schedules = await _uow.StaffSchedules.FindAsync(s =>
-            s.StaffMemberId == doctorId &&
-            s.DayOfWeek == dayOfWeek &&
-            s.IsActive);
+        // Lean, no-tracking, projected reads — avoids materializing full entities and
+        // keeps the request fast even under load.
+        var doctorExists = await _db.StaffMembers
+            .AsNoTracking()
+            .AnyAsync(s => s.Id == doctorId && s.IsActive);
 
-        var scheduleList = schedules
-            .Select(s => (s.StartTime, s.EndTime))
-            .ToList();
+        if (!doctorExists)
+            throw new KeyNotFoundException("Mjeku/stafi nuk u gjet ose nuk është aktiv.");
+
+        var scheduleList = await _db.StaffSchedules
+            .AsNoTracking()
+            .Where(s => s.StaffMemberId == doctorId && s.DayOfWeek == dayOfWeek && s.IsActive)
+            .Select(s => new { s.StartTime, s.EndTime })
+            .ToListAsync();
 
         if (scheduleList.Count == 0)
-            scheduleList.Add((new TimeOnly(9, 0), new TimeOnly(17, 0)));
+            scheduleList.Add(new { StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(17, 0) });
 
-        var dayStart = day;
-        var dayEnd = day.AddDays(1);
-        var bookedAppointments = (await _uow.Appointments.FindAsync(a =>
+        var bookedAppointments = await _db.Appointments
+            .AsNoTracking()
+            .Where(a =>
                 a.DoctorId == doctorId &&
                 a.AppointmentDate.HasValue &&
-                a.AppointmentDate >= dayStart &&
+                a.AppointmentDate >= day &&
                 a.AppointmentDate < dayEnd &&
-                a.Status != AppointmentStatus.Cancelled))
+                a.Status != AppointmentStatus.Cancelled)
             .Select(a => a.AppointmentDate!.Value)
-            .ToList();
+            .ToListAsync();
+
+        // Sort once so overlap checks can short-circuit.
+        bookedAppointments.Sort();
 
         var slots = new List<AvailableSlotDto>();
         // "Now" in Kosovo local time, matching the naive scale of the slot times.
         var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, KosovoTz);
 
-        foreach (var (startTime, endTime) in scheduleList)
+        foreach (var window in scheduleList)
         {
-            var slotStart = day.Add(startTime.ToTimeSpan());
-            var scheduleEnd = day.Add(endTime.ToTimeSpan());
+            var slotStart = day.Add(window.StartTime.ToTimeSpan());
+            var scheduleEnd = day.Add(window.EndTime.ToTimeSpan());
 
             while (slotStart.AddMinutes(durationMinutes) <= scheduleEnd)
             {
                 var slotEnd = slotStart.AddMinutes(durationMinutes);
 
-                var isBooked = bookedAppointments.Any(b => b >= slotStart && b < slotEnd);
+                var isBooked = false;
+                for (var i = 0; i < bookedAppointments.Count; i++)
+                {
+                    var b = bookedAppointments[i];
+                    if (b >= slotEnd) break;
+                    if (b >= slotStart) { isBooked = true; break; }
+                }
+
                 // Only slots earlier than the current local moment are "past".
                 var isPast = slotStart <= nowLocal;
 
@@ -104,13 +118,13 @@ public class TimeSlotService : ITimeSlotService
     {
         var slotEnd = slotStart.AddMinutes(durationMinutes);
 
-        var conflicts = await _uow.Appointments.FindAsync(a =>
-            a.DoctorId == doctorId &&
-            a.AppointmentDate.HasValue &&
-            a.AppointmentDate >= slotStart &&
-            a.AppointmentDate < slotEnd &&
-            a.Status != AppointmentStatus.Cancelled);
-
-        return !conflicts.Any();
+        return !await _db.Appointments
+            .AsNoTracking()
+            .AnyAsync(a =>
+                a.DoctorId == doctorId &&
+                a.AppointmentDate.HasValue &&
+                a.AppointmentDate >= slotStart &&
+                a.AppointmentDate < slotEnd &&
+                a.Status != AppointmentStatus.Cancelled);
     }
 }
