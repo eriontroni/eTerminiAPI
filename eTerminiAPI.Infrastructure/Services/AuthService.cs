@@ -5,6 +5,7 @@ using System.Text;
 using eTerminiAPI.Application.DTOs.Auth;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
+using eTerminiAPI.Domain.Authorization;
 using eTerminiAPI.Domain.Entities;
 using eTerminiAPI.Domain.Enums;
 using Microsoft.Extensions.Configuration;
@@ -80,6 +81,19 @@ public class AuthService : IAuthService
         return await BuildAuthResponse(user);
     }
 
+    private async Task<IReadOnlyList<string>> LoadPermissionsAsync(User user)
+    {
+        if (user.Role == UserRole.SuperAdmin)
+            return Permissions.All;
+
+        if (user.AdminRoleId is null)
+            return Array.Empty<string>();
+
+        var roles = await _uow.AdminRoles.FindAsync(r => r.Id == user.AdminRoleId.Value);
+        var role = roles.FirstOrDefault();
+        return role?.Permissions ?? (IReadOnlyList<string>)Array.Empty<string>();
+    }
+
     public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
     {
         var tokens = await _uow.RefreshTokens.FindAsync(
@@ -112,7 +126,8 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponseDto> BuildAuthResponse(User user)
     {
-        var accessToken = GenerateAccessToken(user);
+        var permissions = await LoadPermissionsAsync(user);
+        var accessToken = GenerateAccessToken(user, permissions);
         var refreshToken = await CreateRefreshTokenAsync(user.Id);
         var expiry = DateTime.UtcNow.AddMinutes(GetConfigInt("Jwt:AccessTokenExpiryMinutes", 60));
 
@@ -127,21 +142,24 @@ public class AuthService : IAuthService
         };
     }
 
-    private string GenerateAccessToken(User user)
+    private string GenerateAccessToken(User user, IReadOnlyList<string> permissions)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiry = DateTime.UtcNow.AddMinutes(GetConfigInt("Jwt:AccessTokenExpiryMinutes", 60));
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim("tenantId", user.TenantId.ToString()),
-            new Claim("fullName", $"{user.FirstName} {user.LastName}"),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(ClaimTypes.Role, user.Role.ToString()),
+            new("tenantId", user.TenantId.ToString()),
+            new("fullName", $"{user.FirstName} {user.LastName}"),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        foreach (var p in permissions)
+            claims.Add(new Claim("permission", p));
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],

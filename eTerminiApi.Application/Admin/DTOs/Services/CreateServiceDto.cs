@@ -1,0 +1,9 @@
+namespace eTerminiAPI.Application.Admin.DTOs.Services;
+
+public class CreateServiceDto
+{
+    public Guid InstitutionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int DurationMinutes { get; set; } = 30;
+}

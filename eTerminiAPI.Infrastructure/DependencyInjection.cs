@@ -1,7 +1,9 @@
+using eTerminiAPI.Application.Admin.Interfaces.Services;
 using eTerminiAPI.Application.Interfaces.Caching;
 using eTerminiAPI.Application.Interfaces.Notifications;
 using eTerminiAPI.Application.Interfaces.Repositories;
 using eTerminiAPI.Application.Interfaces.Services;
+using eTerminiAPI.Infrastructure.Admin.Services;
 using eTerminiAPI.Infrastructure.BackgroundServices;
 using eTerminiAPI.Infrastructure.Caching;
 using eTerminiAPI.Infrastructure.Notifications;
@@ -49,6 +51,19 @@ public static class DependencyInjection
         services.Configure<ReminderOptions>(configuration.GetSection(ReminderOptions.SectionName));
         services.AddScoped<IAppointmentNotifier, LogAppointmentNotifier>();
         services.AddHostedService<AppointmentReminderService>();
+
+        // Admin services (të zhvendosura nga eTerminiAdminAPI — përdorin të njëjtin IUnitOfWork)
+        services.AddScoped<IAdminAuthService,          AdminAuthService>();
+        services.AddScoped<IAdminInstitutionService,   AdminInstitutionService>();
+        services.AddScoped<IAdminWorkerService,        AdminWorkerService>();
+        services.AddScoped<IAdminDashboardService,     AdminDashboardService>();
+        services.AddScoped<IAdminSystemService,        AdminSystemService>();
+        services.AddScoped<IAdminTenantService,        AdminTenantService>();
+        services.AddScoped<IAdminDepartmentService,    AdminDepartmentService>();
+        services.AddScoped<IAdminCategoryService,      AdminCategoryService>();
+        services.AddScoped<IAdminServiceService,       AdminServiceService>();
+        services.AddScoped<IAdminRoleService,          AdminRoleService>();
+        services.AddScoped<IAdminAdministratorService, AdminAdministratorService>();
 
         return services;
     }

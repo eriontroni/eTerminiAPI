@@ -1,9 +1,12 @@
 using System.Text;
+using eTerminiAPI.API.Authorization;
 using eTerminiAPI.API.Hubs;
+using eTerminiAPI.API.Middleware;
 using eTerminiAPI.Application.Interfaces.Realtime;
 using eTerminiAPI.Infrastructure;
 using eTerminiAPI.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -36,7 +39,12 @@ var allowedOrigins = builder.Configuration
 
 if (allowedOrigins is null || allowedOrigins.Length == 0)
 {
-    allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+    allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "https://localhost:5175"
+    ];
 }
 
 builder.Services.AddCors(options =>
@@ -76,12 +84,23 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("InstitutionAdmin",  p => p.RequireRole("InstitutionAdmin", "SuperAdmin"));
     options.AddPolicy("SuperAdmin",        p => p.RequireRole("SuperAdmin"));
 });
+
+// Politikat dinamike "perm:<code>" për endpoint-et admin ([HasPermission("...")]).
+// PermissionPolicyProvider trashëgon DefaultAuthorizationPolicyProvider, kështu që politikat
+// e sipërme me role vazhdojnë të punojnë normalisht.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ISlotAvailabilityBroadcaster, SignalRSlotBroadcaster>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+    // Pas merge-it të AdminAPI-t, disa DTO ndajnë emër të shkurtër (RefreshRequestDto,
+    // CreateDepartmentDto etj.) mes namespace-ve publike dhe .Admin — Swagger-i default
+    // rrëzohet me përplasje schema-id, ndaj përdorim FullName si identifikues unik.
+    c.CustomSchemaIds(type => type.FullName?.Replace('+', '.'));
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -117,11 +136,16 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     {
         await DbSeeder.SeedAsync(db);
     }
+
+    // SuperAdmin është bootstrap credential — jo demo data. Idempotent.
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminSeeder");
+    await AdminSeeder.SeedSuperAdminAsync(db, app.Configuration, seedLogger);
 }
 
 app.UseForwardedHeaders();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", false))
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue("Swagger:Enabled", true))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
